@@ -18,7 +18,6 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.View;
 import android.widget.RemoteViews;
-import android.widget.Toast;
 
 import java.io.IOException;
 
@@ -75,7 +74,6 @@ public class RadioForegroundService extends Service {
 
     private void startPlayer() {
         Log.i(LOG_TAG, "Received Start Foreground Intent ");
-        Toast.makeText(this, "Service Started!", Toast.LENGTH_SHORT).show();
         showNotification();
     }
 
@@ -104,7 +102,6 @@ public class RadioForegroundService extends Service {
     private void playClicked() {
         IS_PLAYING = true;
         Log.i(LOG_TAG, "Clicked Play");
-        Toast.makeText(this, "Clicked Play!", Toast.LENGTH_SHORT).show();
         if (mediaPlayer == null || status == null) {
             startPlayer();
         }
@@ -120,7 +117,6 @@ public class RadioForegroundService extends Service {
     private void pauseClicked() {
         IS_PLAYING = false;
         Log.i(LOG_TAG, "Clicked pause");
-        Toast.makeText(this, "Clicked pause!", Toast.LENGTH_SHORT).show();
 
         status.contentView.setViewVisibility(R.id.notificationPlayButton, View.VISIBLE);
         status.contentView.setViewVisibility(R.id.notificationPauseButton, View.GONE);
