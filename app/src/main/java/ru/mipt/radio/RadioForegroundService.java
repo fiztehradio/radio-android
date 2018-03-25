@@ -9,27 +9,32 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.IBinder;
-import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
 import android.util.Log;
+import android.view.View;
+import android.widget.RemoteViews;
 import android.widget.Toast;
+
+import java.io.IOException;
 
 public class RadioForegroundService extends Service {
     private static final String LOG_TAG = "ForegroundService";
-    public static boolean IS_SERVICE_RUNNING = false;
+    public static boolean IS_PLAYING = false;
 
     public static String MAIN_ACTION = "com.marothiatechs.foregroundservice.action.main";
-    public static String INIT_ACTION = "com.marothiatechs.foregroundservice.action.init";
-    public static String PREV_ACTION = "com.marothiatechs.foregroundservice.action.prev";
     public static String PLAY_ACTION = "com.marothiatechs.foregroundservice.action.play";
-    public static String NEXT_ACTION = "com.marothiatechs.foregroundservice.action.next";
-    public static String STARTFOREGROUND_ACTION = "com.marothiatechs.foregroundservice.action.startforeground";
+    public static String PAUSE_ACTION = "com.marothiatechs.foregroundservice.action.pause";
     public static String STOPFOREGROUND_ACTION = "com.marothiatechs.foregroundservice.action.stopforeground";
     public static int FOREGROUND_SERVICE = 101;
 
     private String CHANNEL_ID = "CHANNEL_ID";
+
+
+    private MediaPlayer mediaPlayer;
 
     @Override
     public void onCreate() {
@@ -38,31 +43,17 @@ public class RadioForegroundService extends Service {
             int importance = NotificationManagerCompat.IMPORTANCE_DEFAULT;
             NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "name", importance);
             channel.setDescription("description");
-            NotificationManager notificationManager = getBaseContext().getSystemService(NotificationManager.class);
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
             notificationManager.createNotificationChannel(channel);
         }
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent.getAction().equals(STARTFOREGROUND_ACTION)) {
-            Log.i(LOG_TAG, "Received Start Foreground Intent ");
-            showNotification();
-            Toast.makeText(this, "Service Started!", Toast.LENGTH_SHORT).show();
-
-        } else if (intent.getAction().equals(PREV_ACTION)) {
-            Log.i(LOG_TAG, "Clicked Previous");
-
-            Toast.makeText(this, "Clicked Previous!", Toast.LENGTH_SHORT)
-                    .show();
-        } else if (intent.getAction().equals(PLAY_ACTION)) {
-            Log.i(LOG_TAG, "Clicked Play");
-
-            Toast.makeText(this, "Clicked Play!", Toast.LENGTH_SHORT).show();
-        } else if (intent.getAction().equals(NEXT_ACTION)) {
-            Log.i(LOG_TAG, "Clicked Next");
-
-            Toast.makeText(this, "Clicked Next!", Toast.LENGTH_SHORT).show();
+         if (intent.getAction().equals(PLAY_ACTION)) {
+            playClicked();
+        } else if (intent.getAction().equals(PAUSE_ACTION)) {
+            pauseClicked();
         } else if (intent.getAction().equals(
                 STOPFOREGROUND_ACTION)) {
             Log.i(LOG_TAG, "Received Stop Foreground Intent");
@@ -72,7 +63,69 @@ public class RadioForegroundService extends Service {
         return START_STICKY;
     }
 
+    private void startPlayer() {
+        Log.i(LOG_TAG, "Received Start Foreground Intent ");
+        Toast.makeText(this, "Service Started!", Toast.LENGTH_SHORT).show();
+        showNotification();
+    }
+
+    private void playRadio() {
+        String url = "http://radio.mipt.ru:8410/stream";
+//        String url = "http://ep32.streamr.ru";
+        if (mediaPlayer == null) {
+            mediaPlayer = new MediaPlayer();
+            mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+            try {
+                mediaPlayer.setDataSource(url);
+                mediaPlayer.prepare(); // might take long! (for buffering, etc)
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        mediaPlayer.start();
+    }
+
+    private void pauseRadio() {
+        if (mediaPlayer != null) {
+            mediaPlayer.pause();
+        }
+    }
+
+    private void playClicked() {
+        IS_PLAYING = true;
+        Log.i(LOG_TAG, "Clicked Play");
+        Toast.makeText(this, "Clicked Play!", Toast.LENGTH_SHORT).show();
+        if (mediaPlayer == null || status == null) {
+            startPlayer();
+        }
+
+        status.contentView.setViewVisibility(R.id.notificationPlayButton, View.GONE);
+        status.contentView.setViewVisibility(R.id.notificationPauseButton, View.VISIBLE);
+        startForeground(FOREGROUND_SERVICE, status);
+
+        playRadio();
+    }
+
+
+    private void pauseClicked() {
+        IS_PLAYING = false;
+        Log.i(LOG_TAG, "Clicked pause");
+        Toast.makeText(this, "Clicked pause!", Toast.LENGTH_SHORT).show();
+
+        status.contentView.setViewVisibility(R.id.notificationPlayButton, View.VISIBLE);
+        status.contentView.setViewVisibility(R.id.notificationPauseButton, View.GONE);
+        startForeground(FOREGROUND_SERVICE, status);
+        pauseRadio();
+    }
+
+    Notification status;
+
     private void showNotification() {
+        RemoteViews views = new RemoteViews(getPackageName(),
+                R.layout.radio_foreground_service_notification);
+
+        views.setViewVisibility(R.id.icon, View.VISIBLE);
+
         Intent notificationIntent = new Intent(this, MainActivity.class);
         notificationIntent.setAction(MAIN_ACTION);
         notificationIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK
@@ -80,45 +133,48 @@ public class RadioForegroundService extends Service {
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0,
                 notificationIntent, 0);
 
-        Intent previousIntent = new Intent(this, RadioForegroundService.class);
-        previousIntent.setAction(PREV_ACTION);
-        PendingIntent ppreviousIntent = PendingIntent.getService(this, 0,
-                previousIntent, 0);
 
         Intent playIntent = new Intent(this, RadioForegroundService.class);
         playIntent.setAction(PLAY_ACTION);
         PendingIntent pplayIntent = PendingIntent.getService(this, 0,
                 playIntent, 0);
 
-        Intent nextIntent = new Intent(this, RadioForegroundService.class);
-        nextIntent.setAction(NEXT_ACTION);
-        PendingIntent pnextIntent = PendingIntent.getService(this, 0,
-                nextIntent, 0);
 
-        Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher);
+        Intent pauseIntent = new Intent(this, RadioForegroundService.class);
+        pauseIntent.setAction(PAUSE_ACTION);
+        PendingIntent ppauseIntent = PendingIntent.getService(this, 0,
+                pauseIntent, 0);
 
-        Notification.Builder builder = new Notification.Builder(this)
-                .setContentTitle("TutorialsFace Music Player")
-                .setTicker("TutorialsFace Music Player")
-                .setContentText("My song")
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setLargeIcon(bitmap)
-                .setContentIntent(pendingIntent)
-                .setOngoing(true)
-                .addAction(android.R.drawable.ic_media_previous, "Previous",
-                        ppreviousIntent)
-                .addAction(android.R.drawable.ic_media_play, "Play",
-                        pplayIntent)
-                .addAction(android.R.drawable.ic_media_next, "Next",
-                        pnextIntent);
+        views.setOnClickPendingIntent(R.id.notificationPlayButton, pplayIntent);
+        views.setOnClickPendingIntent(R.id.notificationPauseButton, ppauseIntent);
+        views.setImageViewBitmap(R.id.notificationPlayButton, getBitmap(this, R.drawable.play));
+        views.setImageViewBitmap(R.id.notificationPauseButton, getBitmap(this, R.drawable.pause));
+
+        Notification.Builder builder = new Notification.Builder(this);
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             builder.setChannelId(CHANNEL_ID);
         }
 
-        Notification notification = builder.build();
-        startForeground(FOREGROUND_SERVICE, notification);
+        status = builder.build();
 
+        status.contentView = views;
+        status.flags = Notification.FLAG_ONGOING_EVENT;
+        status.icon = R.mipmap.ic_launcher;
+        status.contentIntent = pendingIntent;
+        startForeground(FOREGROUND_SERVICE, status);
+    }
+
+    public static Bitmap getBitmap(Context context, int resource) {
+        Bitmap bm = null;
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        try {
+            bm = BitmapFactory.decodeResource(context.getResources(),
+                    resource, options);
+        } catch (Error ee) {
+        } catch (Exception e) {
+        }
+        return bm;
     }
 
     @Override
