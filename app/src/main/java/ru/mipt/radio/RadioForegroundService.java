@@ -84,6 +84,7 @@ public class RadioForegroundService extends Service {
         try {
             PLAYER_IN_PREPARING = true;
             mediaPlayer.setDataSource(url);
+            //todo error handling
             mediaPlayer.prepareAsync();
             mediaPlayer.setOnPreparedListener(mp -> {
                 if (IS_PLAYING) {
@@ -209,29 +210,5 @@ public class RadioForegroundService extends Service {
     public IBinder onBind(Intent intent) {
         // Used only in case if services are bound (Bound Services).
         return null;
-    }
-
-
-    class PlayerPreLoaderTask extends AsyncTask<Void, Void, Void> {
-        @Override
-        protected Void doInBackground(Void[] objects) {
-            preparePlayer();
-            return null;
-        }
-
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            PLAYER_IN_PREPARING = true;
-        }
-
-        @Override
-        protected void onPostExecute(Void aVoid) {
-            super.onPostExecute(aVoid);
-            PLAYER_IN_PREPARING = false;
-            if (mediaPlayer != null && IS_PLAYING) {
-                mediaPlayer.start();
-            }
-        }
     }
 }
