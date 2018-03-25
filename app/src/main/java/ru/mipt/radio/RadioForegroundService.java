@@ -11,6 +11,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.IBinder;
 import android.support.v4.app.NotificationManagerCompat;
@@ -24,6 +25,7 @@ import java.io.IOException;
 public class RadioForegroundService extends Service {
     private static final String LOG_TAG = "ForegroundService";
     public static boolean IS_PLAYING = false;
+    public static boolean PLAYER_READY = false;
 
     public static String MAIN_ACTION = "com.marothiatechs.foregroundservice.action.main";
     public static String PLAY_ACTION = "com.marothiatechs.foregroundservice.action.play";
@@ -72,25 +74,30 @@ public class RadioForegroundService extends Service {
         return START_STICKY;
     }
 
-    private void startPlayer() {
-        Log.i(LOG_TAG, "Received Start Foreground Intent ");
-        showNotification();
-    }
-
-    private void playRadio() {
+    private void preparePlayer() {
         String url = "http://radio.mipt.ru:8410/stream";
 //        String url = "http://ep32.streamr.ru";
-        if (mediaPlayer == null) {
-            mediaPlayer = new MediaPlayer();
-            mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-            try {
-                mediaPlayer.setDataSource(url);
-                mediaPlayer.prepare(); // might take long! (for buffering, etc)
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+
+        mediaPlayer = new MediaPlayer();
+        mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+        try {
+            mediaPlayer.setDataSource(url);
+            mediaPlayer.prepare(); // might take long! (for buffering, etc)
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        mediaPlayer.start();
+    }
+
+
+    private void playRadio() {
+        if (mediaPlayer == null) {
+            new PlayerPreLoaderTask().execute();
+        } else if (PLAYER_READY) {
+            mediaPlayer.start();
+        } else {
+            Log.e(LOG_TAG, "Player not ready yet");
+        }
+
     }
 
     private void pauseRadio() {
@@ -103,7 +110,7 @@ public class RadioForegroundService extends Service {
         IS_PLAYING = true;
         Log.i(LOG_TAG, "Clicked Play");
         if (mediaPlayer == null || status == null) {
-            startPlayer();
+            showNotification();
         }
 
         status.contentView.setViewVisibility(R.id.notificationPlayButton, View.GONE);
@@ -193,5 +200,23 @@ public class RadioForegroundService extends Service {
     public IBinder onBind(Intent intent) {
         // Used only in case if services are bound (Bound Services).
         return null;
+    }
+
+
+    class PlayerPreLoaderTask extends AsyncTask<Void, Void, Void> {
+        @Override
+        protected Void doInBackground(Void[] objects) {
+            preparePlayer();
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+            PLAYER_READY = true;
+            if (mediaPlayer != null && IS_PLAYING) {
+                mediaPlayer.start();
+            }
+        }
     }
 }
