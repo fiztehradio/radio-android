@@ -26,6 +26,7 @@ public class RadioForegroundService extends Service {
     private static final String LOG_TAG = "ForegroundService";
     public static boolean IS_PLAYING = false;
     public static boolean PLAYER_READY = false;
+    public static boolean PLAYER_IN_PREPARING = false;
 
     public static String MAIN_ACTION = "com.marothiatechs.foregroundservice.action.main";
     public static String PLAY_ACTION = "com.marothiatechs.foregroundservice.action.play";
@@ -81,27 +82,35 @@ public class RadioForegroundService extends Service {
         mediaPlayer = new MediaPlayer();
         mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
         try {
+            PLAYER_IN_PREPARING = true;
             mediaPlayer.setDataSource(url);
-            mediaPlayer.prepare(); // might take long! (for buffering, etc)
+            mediaPlayer.prepareAsync();
+            mediaPlayer.setOnPreparedListener(mp -> {
+                if (IS_PLAYING) {
+                    mp.start();
+                }
+                PLAYER_READY = true;
+                PLAYER_IN_PREPARING = false;
+            });
         } catch (IOException e) {
             e.printStackTrace();
+            PLAYER_IN_PREPARING = false;
         }
     }
 
 
     private void playRadio() {
-        if (mediaPlayer == null) {
-            new PlayerPreLoaderTask().execute();
+        if (mediaPlayer == null && !PLAYER_IN_PREPARING) {
+            preparePlayer();
         } else if (PLAYER_READY) {
             mediaPlayer.start();
         } else {
-            Log.e(LOG_TAG, "Player not ready yet");
+            Log.e(LOG_TAG, "Player is not ready yet");
         }
-
     }
 
     private void pauseRadio() {
-        if (mediaPlayer != null) {
+        if (mediaPlayer != null && !PLAYER_IN_PREPARING) {
             mediaPlayer.pause();
         }
     }
@@ -211,9 +220,15 @@ public class RadioForegroundService extends Service {
         }
 
         @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            PLAYER_IN_PREPARING = true;
+        }
+
+        @Override
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
-            PLAYER_READY = true;
+            PLAYER_IN_PREPARING = false;
             if (mediaPlayer != null && IS_PLAYING) {
                 mediaPlayer.start();
             }
