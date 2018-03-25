@@ -14,6 +14,7 @@ import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.IBinder;
 import android.support.v4.app.NotificationManagerCompat;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.View;
 import android.widget.RemoteViews;
@@ -27,7 +28,10 @@ public class RadioForegroundService extends Service {
 
     public static String MAIN_ACTION = "com.marothiatechs.foregroundservice.action.main";
     public static String PLAY_ACTION = "com.marothiatechs.foregroundservice.action.play";
+    public static String PLAY_FROM_NOTIFICATION_ACTION = "com.marothiatechs.foregroundservice.action.play.notification";
     public static String PAUSE_ACTION = "com.marothiatechs.foregroundservice.action.pause";
+    public static String PAUSE_FROM_NOTIFICATION_ACTION = "com.marothiatechs.foregroundservice.action.pause.notification";
+    public static String NOTIFICATION_CLICKED_ACTION = "com.marothiatechs.foregroundservice.action.clicked";
     public static String STOPFOREGROUND_ACTION = "com.marothiatechs.foregroundservice.action.stopforeground";
     public static int FOREGROUND_SERVICE = 101;
 
@@ -52,9 +56,15 @@ public class RadioForegroundService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
          if (intent.getAction().equals(PLAY_ACTION)) {
             playClicked();
-        } else if (intent.getAction().equals(PAUSE_ACTION)) {
-            pauseClicked();
-        } else if (intent.getAction().equals(
+         } else if (intent.getAction().equals(PAUSE_ACTION)) {
+             pauseClicked();
+         } else if (intent.getAction().equals(PLAY_FROM_NOTIFICATION_ACTION)) {
+             playClicked();
+             LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(NOTIFICATION_CLICKED_ACTION));
+         } else if (intent.getAction().equals(PAUSE_FROM_NOTIFICATION_ACTION)) {
+             pauseClicked();
+             LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(NOTIFICATION_CLICKED_ACTION));
+         } else if (intent.getAction().equals(
                 STOPFOREGROUND_ACTION)) {
             Log.i(LOG_TAG, "Received Stop Foreground Intent");
             stopForeground(true);
@@ -135,13 +145,13 @@ public class RadioForegroundService extends Service {
 
 
         Intent playIntent = new Intent(this, RadioForegroundService.class);
-        playIntent.setAction(PLAY_ACTION);
+        playIntent.setAction(PLAY_FROM_NOTIFICATION_ACTION);
         PendingIntent pplayIntent = PendingIntent.getService(this, 0,
                 playIntent, 0);
 
 
         Intent pauseIntent = new Intent(this, RadioForegroundService.class);
-        pauseIntent.setAction(PAUSE_ACTION);
+        pauseIntent.setAction(PAUSE_FROM_NOTIFICATION_ACTION);
         PendingIntent ppauseIntent = PendingIntent.getService(this, 0,
                 pauseIntent, 0);
 
