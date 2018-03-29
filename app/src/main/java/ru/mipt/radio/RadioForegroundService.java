@@ -9,24 +9,34 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.media.AudioManager;
-import android.media.MediaPlayer;
-import android.os.AsyncTask;
+import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
-import android.support.v4.app.NotificationManagerCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.View;
 import android.widget.RemoteViews;
 
-import java.io.IOException;
+import com.google.android.exoplayer2.ExoPlayerFactory;
+import com.google.android.exoplayer2.SimpleExoPlayer;
+import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory;
+import com.google.android.exoplayer2.extractor.ExtractorsFactory;
+import com.google.android.exoplayer2.source.ExtractorMediaSource;
+import com.google.android.exoplayer2.source.MediaSource;
+import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection;
+import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
+import com.google.android.exoplayer2.trackselection.TrackSelection;
+import com.google.android.exoplayer2.trackselection.TrackSelector;
+import com.google.android.exoplayer2.upstream.BandwidthMeter;
+import com.google.android.exoplayer2.upstream.DataSource;
+import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
+import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
+import com.google.android.exoplayer2.util.Util;
+
 
 public class RadioForegroundService extends Service {
     private static final String LOG_TAG = "ForegroundService";
     public static boolean IS_PLAYING = false;
-    public static boolean PLAYER_READY = false;
-    public static boolean PLAYER_IN_PREPARING = false;
 
     public static String MAIN_ACTION = "com.marothiatechs.foregroundservice.action.main";
     public static String PLAY_ACTION = "com.marothiatechs.foregroundservice.action.play";
@@ -39,14 +49,11 @@ public class RadioForegroundService extends Service {
 
     private String CHANNEL_ID = "CHANNEL_ID";
 
-
-    private MediaPlayer mediaPlayer;
-
     @Override
     public void onCreate() {
         super.onCreate();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            int importance = NotificationManagerCompat.IMPORTANCE_DEFAULT;
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
             NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "name", importance);
             channel.setDescription("description");
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
@@ -75,44 +82,52 @@ public class RadioForegroundService extends Service {
         return START_STICKY;
     }
 
+
+    private SimpleExoPlayer mediaPlayer;
+    private BandwidthMeter bandwidthMeter;
+    private ExtractorsFactory extractorsFactory;
+    private TrackSelection.Factory trackSelectionFactory;
+    private TrackSelector trackSelector;
+    private DefaultBandwidthMeter defaultBandwidthMeter;
+    private DataSource.Factory dataSourceFactory;
+    private MediaSource mediaSource;
+
     private void preparePlayer() {
         String url = "http://radio.mipt.ru:8410/stream";
 //        String url = "http://ep32.streamr.ru";
 
-        mediaPlayer = new MediaPlayer();
-        mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-        try {
-            PLAYER_IN_PREPARING = true;
-            mediaPlayer.setDataSource(url);
-            //todo error handling
-            mediaPlayer.prepareAsync();
-            mediaPlayer.setOnPreparedListener(mp -> {
-                if (IS_PLAYING) {
-                    mp.start();
-                }
-                PLAYER_READY = true;
-                PLAYER_IN_PREPARING = false;
-            });
-        } catch (IOException e) {
-            e.printStackTrace();
-            PLAYER_IN_PREPARING = false;
-        }
+        bandwidthMeter = new DefaultBandwidthMeter();
+        extractorsFactory = new DefaultExtractorsFactory();
+
+        trackSelectionFactory = new AdaptiveTrackSelection.Factory(bandwidthMeter);
+        trackSelector = new DefaultTrackSelector(trackSelectionFactory);
+        defaultBandwidthMeter = new DefaultBandwidthMeter();
+        dataSourceFactory = new DefaultDataSourceFactory(this,
+                Util.getUserAgent(this, "mipt-radio"), defaultBandwidthMeter);
+
+        mediaSource = new ExtractorMediaSource.Factory(dataSourceFactory)
+                .setExtractorsFactory(extractorsFactory)
+                .createMediaSource(Uri.parse(url));
+
+        mediaPlayer = ExoPlayerFactory.newSimpleInstance(this, trackSelector);
+
+        mediaPlayer.prepare(mediaSource);
+        mediaPlayer.setPlayWhenReady(true);
     }
 
 
     private void playRadio() {
-        if (mediaPlayer == null && !PLAYER_IN_PREPARING) {
-            preparePlayer();
-        } else if (PLAYER_READY) {
-            mediaPlayer.start();
-        } else {
-            Log.e(LOG_TAG, "Player is not ready yet");
+        if (mediaPlayer != null) {
+            mediaPlayer.stop();
         }
+        preparePlayer();
+
     }
 
-    private void pauseRadio() {
-        if (mediaPlayer != null && !PLAYER_IN_PREPARING) {
-            mediaPlayer.pause();
+    private void stopRadio() {
+        if (mediaPlayer != null) {
+            mediaPlayer.stop();
+            mediaPlayer = null;
         }
     }
 
@@ -138,7 +153,7 @@ public class RadioForegroundService extends Service {
         status.contentView.setViewVisibility(R.id.notificationPlayButton, View.VISIBLE);
         status.contentView.setViewVisibility(R.id.notificationPauseButton, View.GONE);
         startForeground(FOREGROUND_SERVICE, status);
-        pauseRadio();
+        stopRadio();
     }
 
     Notification status;
