@@ -9,6 +9,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
@@ -16,6 +19,7 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.View;
 import android.widget.RemoteViews;
+import android.widget.Toast;
 
 import com.google.android.exoplayer2.ExoPlayerFactory;
 import com.google.android.exoplayer2.SimpleExoPlayer;
@@ -33,6 +37,9 @@ import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.util.Util;
 
+import static android.media.AudioAttributes.CONTENT_TYPE_MUSIC;
+import static android.media.AudioAttributes.USAGE_MEDIA;
+
 
 public class RadioForegroundService extends Service {
     private static final String LOG_TAG = "ForegroundService";
@@ -49,6 +56,9 @@ public class RadioForegroundService extends Service {
 
     private String CHANNEL_ID = "CHANNEL_ID";
 
+    AudioManager audioManager;
+
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -59,21 +69,22 @@ public class RadioForegroundService extends Service {
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
             notificationManager.createNotificationChannel(channel);
         }
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-         if (intent.getAction().equals(PLAY_ACTION)) {
+        if (intent.getAction().equals(PLAY_ACTION)) {
             playClicked();
-         } else if (intent.getAction().equals(PAUSE_ACTION)) {
-             pauseClicked();
-         } else if (intent.getAction().equals(PLAY_FROM_NOTIFICATION_ACTION)) {
-             playClicked();
-             LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(NOTIFICATION_CLICKED_ACTION));
-         } else if (intent.getAction().equals(PAUSE_FROM_NOTIFICATION_ACTION)) {
-             pauseClicked();
-             LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(NOTIFICATION_CLICKED_ACTION));
-         } else if (intent.getAction().equals(
+        } else if (intent.getAction().equals(PAUSE_ACTION)) {
+            pauseClicked();
+        } else if (intent.getAction().equals(PLAY_FROM_NOTIFICATION_ACTION)) {
+            playClicked();
+            LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(NOTIFICATION_CLICKED_ACTION));
+        } else if (intent.getAction().equals(PAUSE_FROM_NOTIFICATION_ACTION)) {
+            pauseClicked();
+            LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(NOTIFICATION_CLICKED_ACTION));
+        } else if (intent.getAction().equals(
                 STOPFOREGROUND_ACTION)) {
             Log.i(LOG_TAG, "Received Stop Foreground Intent");
             stopForeground(true);
@@ -127,11 +138,21 @@ public class RadioForegroundService extends Service {
     private void stopRadio() {
         if (mediaPlayer != null) {
             mediaPlayer.stop();
-            mediaPlayer = null;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioManager.abandonAudioFocusRequest(request);
+        } else {
+            audioManager.abandonAudioFocus(listener);
         }
     }
 
     private void playClicked() {
+        if (!requestAudioFocus()) {
+            Toast.makeText(this, "Ошибка воспроизведения", Toast.LENGTH_LONG).show();
+            return;
+        }
+
         IS_PLAYING = true;
         Log.i(LOG_TAG, "Clicked Play");
         if (mediaPlayer == null || status == null) {
@@ -225,5 +246,37 @@ public class RadioForegroundService extends Service {
     public IBinder onBind(Intent intent) {
         // Used only in case if services are bound (Bound Services).
         return null;
+    }
+
+    AudioManager.OnAudioFocusChangeListener listener = focusChange -> {
+        if (focusChange == AudioManager.AUDIOFOCUS_LOSS) {
+            pauseClicked();
+        }
+    };
+
+    AudioFocusRequest request;
+
+    private boolean requestAudioFocus() {
+        int result;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            AudioAttributes mAudioAttributes =
+                    new AudioAttributes.Builder()
+                            .setUsage(USAGE_MEDIA)
+                            .setContentType(CONTENT_TYPE_MUSIC)
+                            .build();
+            request = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                    .setAudioAttributes(mAudioAttributes)
+                    .setAcceptsDelayedFocusGain(true)
+                    .setOnAudioFocusChangeListener(listener)
+                    .build();
+            result = audioManager.requestAudioFocus(request);
+        } else {
+            result = audioManager.requestAudioFocus(listener,
+                    AudioManager.STREAM_MUSIC,
+                    AudioManager.AUDIOFOCUS_GAIN);
+        }
+
+        return result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
     }
 }
