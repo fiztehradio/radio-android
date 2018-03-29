@@ -155,13 +155,13 @@ public class RadioForegroundService extends Service {
 
         IS_PLAYING = true;
         Log.i(LOG_TAG, "Clicked Play");
-        if (mediaPlayer == null || status == null) {
+        if (mediaPlayer == null || notification == null) {
             showNotification();
         }
 
-        status.contentView.setViewVisibility(R.id.notificationPlayButton, View.GONE);
-        status.contentView.setViewVisibility(R.id.notificationPauseButton, View.VISIBLE);
-        startForeground(FOREGROUND_SERVICE, status);
+        notification.contentView.setViewVisibility(R.id.notificationPlayButton, View.GONE);
+        notification.contentView.setViewVisibility(R.id.notificationPauseButton, View.VISIBLE);
+        startForeground(FOREGROUND_SERVICE, notification);
 
         playRadio();
     }
@@ -171,13 +171,14 @@ public class RadioForegroundService extends Service {
         IS_PLAYING = false;
         Log.i(LOG_TAG, "Clicked pause");
 
-        status.contentView.setViewVisibility(R.id.notificationPlayButton, View.VISIBLE);
-        status.contentView.setViewVisibility(R.id.notificationPauseButton, View.GONE);
-        startForeground(FOREGROUND_SERVICE, status);
+        notification.contentView.setViewVisibility(R.id.notificationPlayButton, View.VISIBLE);
+        notification.contentView.setViewVisibility(R.id.notificationPauseButton, View.GONE);
+        startForeground(FOREGROUND_SERVICE, notification);
+        stopForeground(false);
         stopRadio();
     }
 
-    Notification status;
+    Notification notification;
 
     private void showNotification() {
         RemoteViews views = new RemoteViews(getPackageName(),
@@ -215,13 +216,12 @@ public class RadioForegroundService extends Service {
             builder.setChannelId(CHANNEL_ID);
         }
 
-        status = builder.build();
+        notification = builder.build();
 
-        status.contentView = views;
-        status.flags = Notification.FLAG_ONGOING_EVENT;
-        status.icon = R.mipmap.ic_launcher;
-        status.contentIntent = pendingIntent;
-        startForeground(FOREGROUND_SERVICE, status);
+        notification.contentView = views;
+        notification.icon = R.mipmap.ic_launcher;
+        notification.contentIntent = pendingIntent;
+        startForeground(FOREGROUND_SERVICE, notification);
     }
 
     public static Bitmap getBitmap(Context context, int resource) {
