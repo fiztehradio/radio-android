@@ -49,8 +49,10 @@ public class RadioForegroundService extends Service {
     public static String PLAY_ACTION = "com.marothiatechs.foregroundservice.action.play";
     public static String PLAY_FROM_NOTIFICATION_ACTION = "com.marothiatechs.foregroundservice.action.play.notification";
     public static String PAUSE_ACTION = "com.marothiatechs.foregroundservice.action.pause";
+    public static final String DISMISS_INTENT = "com.marothiatechs.foregroundservice.action.dismiss";
     public static String PAUSE_FROM_NOTIFICATION_ACTION = "com.marothiatechs.foregroundservice.action.pause.notification";
-    public static String NOTIFICATION_CLICKED_ACTION = "com.marothiatechs.foregroundservice.action.clicked";
+    public static final String NOTIFICATION_ACTION_SERVICE = "com.marothiatechs.foregroundservice.action.clicked";
+    public static final String NOTIFICATION_ACTION_ACTIVITY = "com.marothiatechs.activity.action.clicked";
     public static String STOPFOREGROUND_ACTION = "com.marothiatechs.foregroundservice.action.stopforeground";
     public static int FOREGROUND_SERVICE = 101;
 
@@ -80,10 +82,10 @@ public class RadioForegroundService extends Service {
             pauseClicked();
         } else if (intent.getAction().equals(PLAY_FROM_NOTIFICATION_ACTION)) {
             playClicked();
-            LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(NOTIFICATION_CLICKED_ACTION));
+            LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(NOTIFICATION_ACTION_SERVICE));
         } else if (intent.getAction().equals(PAUSE_FROM_NOTIFICATION_ACTION)) {
             pauseClicked();
-            LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(NOTIFICATION_CLICKED_ACTION));
+            LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(NOTIFICATION_ACTION_SERVICE));
         } else if (intent.getAction().equals(
                 STOPFOREGROUND_ACTION)) {
             Log.i(LOG_TAG, "Received Stop Foreground Intent");
@@ -220,7 +222,13 @@ public class RadioForegroundService extends Service {
 
         notification.contentView = views;
         notification.icon = R.mipmap.ic_launcher;
-        notification.contentIntent = pendingIntent;
+        notification.contentIntent = pendingIntent; //--Зачем? если при нажатии на notification в любом случае происходит переход на главный экран приложения
+        //--Для закрытия приложения по свайпу notification
+        Intent intent = new Intent(this, RadioServiceNotificationClickBroadcastReceiver.class);
+        intent.setAction(NOTIFICATION_ACTION_SERVICE);
+        intent.putExtra(DISMISS_INTENT, true);
+        notification.deleteIntent = PendingIntent.getBroadcast(this.getApplicationContext(), 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+        //--
         startForeground(FOREGROUND_SERVICE, notification);
     }
 

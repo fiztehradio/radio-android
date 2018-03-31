@@ -23,6 +23,8 @@
             </intent-filter>
         </activity>
         <service android:name=".RadioForegroundService" />
+        <receiver android:name=".RadioServiceNotificationClickBroadcastReceiver">
+        </receiver>
 
     </application>
 

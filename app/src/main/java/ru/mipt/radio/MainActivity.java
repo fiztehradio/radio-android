@@ -11,6 +11,10 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.view.animation.LinearInterpolator;
 import android.widget.ImageView;
 
+import static ru.mipt.radio.RadioForegroundService.DISMISS_INTENT;
+import static ru.mipt.radio.RadioForegroundService.NOTIFICATION_ACTION_ACTIVITY;
+import static ru.mipt.radio.RadioForegroundService.NOTIFICATION_ACTION_SERVICE;
+
 public class MainActivity extends Activity {
 
     private ImageView playButton;
@@ -67,9 +71,11 @@ public class MainActivity extends Activity {
         super.onStart();
         setPlayingState();
 
-        IntentFilter filter = new IntentFilter(RadioForegroundService.NOTIFICATION_CLICKED_ACTION);
+        IntentFilter filter = new IntentFilter(NOTIFICATION_ACTION_SERVICE);
         notificationClickReceiver = new RadioServiceNotificationClickBroadcastReceiver();
         LocalBroadcastManager.getInstance(this).registerReceiver(notificationClickReceiver, filter);
+        LocalBroadcastManager.getInstance(this).registerReceiver(
+                new ActivityBroadcastReceiver(), new IntentFilter(NOTIFICATION_ACTION_ACTIVITY));
     }
 
     @Override
@@ -102,12 +108,11 @@ public class MainActivity extends Activity {
         }
     }
 
-
-    class RadioServiceNotificationClickBroadcastReceiver extends BroadcastReceiver {
-
+    private class ActivityBroadcastReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
-            setPlayingState();
+            if(intent.getBooleanExtra(DISMISS_INTENT, false)) finish();
+            else setPlayingState();
         }
     }
 }
