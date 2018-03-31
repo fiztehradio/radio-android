@@ -37,6 +37,12 @@ import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.util.Util;
+import com.vodyasov.amr.AudiostreamMetadataManager;
+import com.vodyasov.amr.OnNewMetadataListener;
+
+import java.util.List;
+
+import wseemann.media.FFmpegMediaMetadataRetriever;
 
 import static android.media.AudioAttributes.CONTENT_TYPE_MUSIC;
 import static android.media.AudioAttributes.USAGE_MEDIA;
@@ -140,6 +146,47 @@ public class RadioForegroundService extends Service {
         mediaPlayer.prepare(mediaSource);
 
         mediaPlayer.setPlayWhenReady(true);
+
+    }
+
+
+    private void initMetaDataParser() {
+        Uri uri = Uri.parse(url);
+        OnNewMetadataListener listener = new OnNewMetadataListener() {
+            @Override
+            public void onNewHeaders(String stringUri, List<String> name, List<String> desc,
+                                     List<String> br, List<String> genre, List<String> info) {}
+
+            @Override
+            public void onNewStreamTitle(String stringUri, String streamTitle) {
+                Log.d(LOG_TAG, streamTitle);
+                if (IS_PLAYING) {
+                    notification.contentView.setTextViewText(R.id.title, streamTitle);
+                    startForeground(FOREGROUND_SERVICE, notification);
+                }
+            }
+        };
+
+        AudiostreamMetadataManager.getInstance()
+                .setUri(uri)
+                .setOnNewMetadataListener(listener)
+                .start();
+    }
+
+
+    //todo
+    private String getCurrentTrackInfo() {
+        final FFmpegMediaMetadataRetriever mediaMetadataRetriever = new FFmpegMediaMetadataRetriever();
+        mediaMetadataRetriever.setDataSource(url);
+        final FFmpegMediaMetadataRetriever.Metadata metadata = mediaMetadataRetriever.getMetadata();
+        byte[] image = mediaMetadataRetriever.getEmbeddedPicture();
+        if (image != null) {
+            Bitmap bitmap = BitmapFactory.decodeByteArray(image, 0, image.length);
+            notification.contentView.setImageViewBitmap(R.id.icon, bitmap);
+
+        }
+        mediaMetadataRetriever.release();
+        return metadata.getString("StreamTitle");
     }
 
 
@@ -148,10 +195,12 @@ public class RadioForegroundService extends Service {
             mediaPlayer.stop();
         }
         preparePlayer();
+        initMetaDataParser();
 
     }
 
     private void stopRadio() {
+        AudiostreamMetadataManager.getInstance().stop();
         if (mediaPlayer != null) {
             mediaPlayer.stop();
         }
