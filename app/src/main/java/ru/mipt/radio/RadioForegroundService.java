@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.AudioAttributes;
@@ -48,6 +49,7 @@ public class RadioForegroundService extends Service {
     public static final String url = "http://radio.mipt.ru:8410/stream";
 
     public static String MAIN_ACTION = "com.marothiatechs.foregroundservice.action.main";
+    public static String START_SERVICE = "com.marothiatechs.foregroundservice.action.start";
     public static String PLAY_ACTION = "com.marothiatechs.foregroundservice.action.play";
     public static String PLAY_FROM_NOTIFICATION_ACTION = "com.marothiatechs.foregroundservice.action.play.notification";
     public static String PAUSE_ACTION = "com.marothiatechs.foregroundservice.action.pause";
@@ -58,7 +60,8 @@ public class RadioForegroundService extends Service {
 
     private String CHANNEL_ID = "CHANNEL_ID";
 
-    AudioManager audioManager;
+    private AudioManager audioManager;
+    private HeadsetBroadcastReceiver headsetBroadcastReceiver;
 
 
     @Override
@@ -72,14 +75,22 @@ public class RadioForegroundService extends Service {
             notificationManager.createNotificationChannel(channel);
         }
         audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+
+        headsetBroadcastReceiver = new HeadsetBroadcastReceiver();
+        IntentFilter intentFilter = new IntentFilter("android.intent.action.HEADSET_PLUG");
+        intentFilter.addAction("android.bluetooth.headset.action.STATE_CHANGED");
+        intentFilter.addAction("android.bluetooth.headset.profile.action.CONNECTION_STATE_CHANGED");
+        registerReceiver(headsetBroadcastReceiver, intentFilter);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent == null) {
+        if (intent == null || intent.getAction() == null) {
             return START_STICKY;
         }
-        if (intent.getAction().equals(PLAY_ACTION)) {
+        if (intent.getAction().equals(START_SERVICE)) {
+            //do nothing
+        } else if (intent.getAction().equals(PLAY_ACTION)) {
             playClicked();
         } else if (intent.getAction().equals(PAUSE_ACTION)) {
             pauseClicked();
@@ -173,6 +184,9 @@ public class RadioForegroundService extends Service {
 
 
     private void pauseClicked() {
+        if (!IS_PLAYING) {
+            return;
+        }
         IS_PLAYING = false;
         Log.i(LOG_TAG, "Clicked pause");
 
@@ -251,6 +265,7 @@ public class RadioForegroundService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        unregisterReceiver(headsetBroadcastReceiver);
         Log.i(LOG_TAG, "In onDestroy");
     }
 
@@ -290,5 +305,16 @@ public class RadioForegroundService extends Service {
         }
 
         return result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
+    }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        super.onTaskRemoved(rootIntent);
+        if (IS_PLAYING) {
+            pauseClicked();
+        }
+        //remove notification
+        stopForeground(true);
+        stopSelf();
     }
 }

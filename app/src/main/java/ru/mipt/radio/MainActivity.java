@@ -35,6 +35,13 @@ public class MainActivity extends Activity {
         playButton.setOnClickListener(v -> playButtonClicked());
         initTextView();
 
+        startService();
+    }
+
+    private void startService() {
+        Intent service = new Intent(this, RadioForegroundService.class);
+        service.setAction(RadioForegroundService.START_SERVICE);
+        startService(service);
     }
 
     private void initTextView() {
