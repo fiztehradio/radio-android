@@ -34,4 +34,7 @@ dependencies {
 
     implementation 'com.google.android.exoplayer:exoplayer:2.7.1'
 
+    // AppMetrica
+    implementation 'com.yandex.android:mobmetricalib:2.80'
+
 }
