@@ -74,6 +74,9 @@ public class RadioForegroundService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent == null) {
+            return START_STICKY;
+        }
         if (intent.getAction().equals(PLAY_ACTION)) {
             playClicked();
         } else if (intent.getAction().equals(PAUSE_ACTION)) {
