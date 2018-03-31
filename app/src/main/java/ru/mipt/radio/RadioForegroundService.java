@@ -45,6 +45,8 @@ public class RadioForegroundService extends Service {
     private static final String LOG_TAG = "ForegroundService";
     public static boolean IS_PLAYING = false;
 
+    public static final String url = "http://radio.mipt.ru:8410/stream";
+
     public static String MAIN_ACTION = "com.marothiatechs.foregroundservice.action.main";
     public static String PLAY_ACTION = "com.marothiatechs.foregroundservice.action.play";
     public static String PLAY_FROM_NOTIFICATION_ACTION = "com.marothiatechs.foregroundservice.action.play.notification";
@@ -106,7 +108,6 @@ public class RadioForegroundService extends Service {
     private MediaSource mediaSource;
 
     private void preparePlayer() {
-        String url = "http://radio.mipt.ru:8410/stream";
 //        String url = "http://ep32.streamr.ru";
 
         bandwidthMeter = new DefaultBandwidthMeter();
@@ -125,6 +126,7 @@ public class RadioForegroundService extends Service {
         mediaPlayer = ExoPlayerFactory.newSimpleInstance(this, trackSelector);
 
         mediaPlayer.prepare(mediaSource);
+
         mediaPlayer.setPlayWhenReady(true);
     }
 
@@ -217,6 +219,13 @@ public class RadioForegroundService extends Service {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             builder.setChannelId(CHANNEL_ID);
         }
+
+        //--Попытка достать название трека
+        /*MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+        mmr.setDataSource(url);
+        String artist = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST);
+        builder.setContentTitle(artist);*/
+        //--
 
         notification = builder.build();
 
