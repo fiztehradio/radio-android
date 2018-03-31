@@ -6,10 +6,12 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
 import android.view.animation.LinearInterpolator;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 public class MainActivity extends Activity {
 
@@ -31,11 +33,18 @@ public class MainActivity extends Activity {
         miptPlanet = findViewById(R.id.miptPlanet);
 
         playButton.setOnClickListener(v -> playButtonClicked());
+        initTextView();
 
     }
 
+    private void initTextView() {
+        Typeface face = Typeface.createFromAsset(getAssets(), "Uni Sans Heavy.otf");
+        TextView textView = findViewById(R.id.textView);
+        textView.setTypeface(face);
+    }
+
     private void playButtonClicked() {
-        Intent service = new Intent(MainActivity.this, RadioForegroundService.class);
+        Intent service = new Intent(this, RadioForegroundService.class);
 
         if (!RadioForegroundService.IS_PLAYING) {
             playButton.setImageResource(R.drawable.pause);
