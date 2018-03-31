@@ -1,3 +1,12 @@
+plugins {
+    id 'com.onesignal.androidsdk.onesignal-gradle-plugin' version '0.8.1'
+}
+apply plugin: 'com.onesignal.androidsdk.onesignal-gradle-plugin'
+
+repositories {
+    maven { url 'https://maven.google.com' }
+}
+
 apply plugin: 'com.android.application'
 
 android {
@@ -9,9 +18,12 @@ android {
         applicationId "ru.mipt.radio"
         minSdkVersion 16
         targetSdkVersion 27
-        versionCode 1
-        versionName "1.0"
+        versionCode 3
+        versionName "1.1"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders = [onesignal_app_id: "c49827eb-e6e5-4066-9921-ee6fa43d1cfd",
+                                // Project number pulled from dashboard, local value is ignored.
+                                onesignal_google_project_number: "REMOTE"]
     }
     buildTypes {
         release {
@@ -36,5 +48,6 @@ dependencies {
 
     // AppMetrica
     implementation 'com.yandex.android:mobmetricalib:2.80'
+    implementation 'com.onesignal:OneSignal:[3.8.3, 3.99.99]'
 
 }

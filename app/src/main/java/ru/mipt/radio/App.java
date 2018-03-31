@@ -2,6 +2,7 @@ package ru.mipt.radio;
 
 import android.app.Application;
 
+import com.onesignal.OneSignal;
 import com.yandex.metrica.YandexMetrica;
 
 /**
@@ -18,5 +19,12 @@ public class App extends Application {
         YandexMetrica.activate(getApplicationContext(), API_key);
         // Отслеживание активности пользователей
         YandexMetrica.enableActivityAutoTracking(this);
+
+        // OneSignal Initialization
+        OneSignal.startInit(this)
+                .inFocusDisplaying(OneSignal.OSInFocusDisplayOption.Notification)
+                .unsubscribeWhenNotificationsAreDisabled(true)
+                .init();
+
     }
 }
