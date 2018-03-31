@@ -18,8 +18,8 @@ android {
         applicationId "ru.mipt.radio"
         minSdkVersion 16
         targetSdkVersion 27
-        versionCode 3
-        versionName "1.1"
+        versionCode 4
+        versionName "1.2"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         manifestPlaceholders = [onesignal_app_id: "c49827eb-e6e5-4066-9921-ee6fa43d1cfd",
                                 // Project number pulled from dashboard, local value is ignored.
