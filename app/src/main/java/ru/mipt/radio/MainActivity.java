@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.media.AudioManager;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
 import android.view.animation.LinearInterpolator;
@@ -21,6 +22,10 @@ public class MainActivity extends Activity {
     private ImageView miptPlanet;
 
     private BroadcastReceiver notificationClickReceiver;
+    private BroadcastReceiver notificationClickReceiverActivity;
+    private BroadcastReceiver headsetPlugReceiver;
+
+    private Boolean isHSConnected = false;
 
     private ValueAnimator planetRotation;
     private static int PLANET_ROTATION_DURATION = 30000;
@@ -74,8 +79,11 @@ public class MainActivity extends Activity {
         IntentFilter filter = new IntentFilter(NOTIFICATION_ACTION_SERVICE);
         notificationClickReceiver = new RadioServiceNotificationClickBroadcastReceiver();
         LocalBroadcastManager.getInstance(this).registerReceiver(notificationClickReceiver, filter);
+        notificationClickReceiverActivity = new ActivityBroadcastReceiver();
         LocalBroadcastManager.getInstance(this).registerReceiver(
-                new ActivityBroadcastReceiver(), new IntentFilter(NOTIFICATION_ACTION_ACTIVITY));
+                notificationClickReceiverActivity, new IntentFilter(NOTIFICATION_ACTION_ACTIVITY));
+        headsetPlugReceiver = new HeadsetBroadcastReceiver();
+        registerReceiver( headsetPlugReceiver, new IntentFilter(AudioManager.ACTION_HEADSET_PLUG));
     }
 
     @Override
@@ -84,7 +92,11 @@ public class MainActivity extends Activity {
         stopPlanetRotation();
 
         LocalBroadcastManager.getInstance(this).unregisterReceiver(notificationClickReceiver);
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(notificationClickReceiverActivity);
+        unregisterReceiver(headsetPlugReceiver);
         notificationClickReceiver = null;
+        notificationClickReceiverActivity = null;
+        headsetPlugReceiver = null;
     }
 
     private void startPlanetRotation() {
@@ -113,6 +125,28 @@ public class MainActivity extends Activity {
         public void onReceive(Context context, Intent intent) {
             if(intent.getBooleanExtra(DISMISS_INTENT, false)) finish();
             else setPlayingState();
+        }
+    }
+
+    private class HeadsetBroadcastReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if(intent.getAction() == AudioManager.ACTION_HEADSET_PLUG){
+                int i = intent.getIntExtra("state", -1);
+                switch (i){
+                    case 1: {
+                        isHSConnected = true;
+                        break;
+                    }
+                    case 0: {
+                        if(isHSConnected) {
+                            playButtonClicked();
+                            isHSConnected = false;
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 }
