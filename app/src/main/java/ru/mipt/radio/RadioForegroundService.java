@@ -52,7 +52,7 @@ public class RadioForegroundService extends Service {
     private static final String LOG_TAG = "ForegroundService";
     public static boolean IS_PLAYING = false;
 
-    public static final String url = "http://radio.mipt.ru:8410/stream";
+    public static final String url = "https://radio.mipt.ru/stream";
 
     public static String MAIN_ACTION = "com.marothiatechs.foregroundservice.action.main";
     public static String START_SERVICE = "com.marothiatechs.foregroundservice.action.start";
